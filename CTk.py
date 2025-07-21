@@ -100,10 +100,119 @@ def Return_book_window():
 def User_name_window():
     username_window = CTkToplevel()
     center_window(username_window, 900, 800)
-    username_window.title("Find User")
+    username_window.title("Users Information")
     username_window.lift()
     username_window.grab_set()
     username_window.resizable(False,False)
+    
+#===========================================
+    
+def User_list_window():
+    userlist_window = CTkToplevel()
+    center_window(userlist_window, 900, 800)
+    userlist_window.title("Users Information")
+    userlist_window.lift()
+    userlist_window.grab_set()
+    userlist_window.resizable(False,False)
+    
+    search_box_frame = CTkFrame(master = userlist_window, border_color = '#1f6aa5', border_width = 2)
+    search_box_frame.pack(fill = 'x', padx = 10, pady = 10)
+
+    search_box = CTkTextbox(master = search_box_frame, font = ("Arial", 15), height = 1)
+    search_box.pack(fill = 'x', side = 'left', expand = True, padx = 2, pady = 3)
+
+    search_button = CTkButton(master = search_box_frame, text = "Search", width = 12, font = ("Arial", 15))
+    search_button.pack(fill = 'x', expand = True, padx = (0,4), pady = 2)
+    
+    users_list_text_frame = CTkFrame(master = userlist_window)
+    users_list_text_frame.pack(fill = 'both', padx = 10, pady = 10, expand = True)
+
+    users_list_text = CTkTextbox(master = users_list_text_frame, height = 550, border_color = '#1f6aa5', border_width = 2)
+    users_list_text.pack(fill = 'both', expand = True)
+    
+#===========================================
+    
+def Add_book_window():
+    add_book_window = CTkToplevel()
+    center_window(add_book_window, 700, 350)
+    add_book_window.title("Users Information")
+    add_book_window.lift()
+    add_book_window.grab_set()
+    add_book_window.resizable(False,False)
+    
+    fields = ["Book Name", "Author", "Publisher Name", "Publish Date", "Book ID", "Stock", "Category"]
+    
+    for i,field in enumerate(fields):
+        fields_label_frame = CTkFrame(master = add_book_window, fg_color = '#1f6aa5', corner_radius = 6,
+                                      width = 100, height = 27)
+        fields_label = CTkLabel(master = fields_label_frame, text = field, bg_color = 'transparent', height = 27,
+                                font = ("Arial", 15))
+        fields_entry = CTkEntry(master = add_book_window, width = 575, height = 35)
+        
+        fields_label_frame.grid(row = i, column = 0, padx = 4, pady = (4), sticky = 'nsew')
+        fields_label_frame.grid_rowconfigure(0, weight = 1)
+        fields_label_frame.grid_columnconfigure(0, weight = 1)
+        fields_label.grid(padx = 4, pady = 4, sticky = 'nsew')
+        fields_entry.grid(row = i, column = 1)
+    
+    confirm_btn = CTkButton(master = add_book_window, text = "Confirm", font = ("Arial", 15), width = 100, height = 40)
+    confirm_btn.place(x = 300, y = 302)
+    
+    #===========================================
+    
+def Remove_book_window():
+    remove_book_window = CTkToplevel()
+    center_window(remove_book_window, 472, 90)
+    remove_book_window.title("Users Information")
+    remove_book_window.lift()
+    remove_book_window.grab_set()
+    remove_book_window.resizable(False,False)
+    
+    book_id_label_frame = CTkFrame(master = remove_book_window, fg_color = '#1f6aa5', corner_radius = 6,
+                                      width = 100, height = 27)
+    book_id_label = CTkLabel(master = book_id_label_frame, text = "Book ID", bg_color = 'transparent', height = 27,
+                                font = ("Arial", 15))
+    book_id_entry = CTkEntry(master = remove_book_window, width = 400, height = 35)
+    book_id_label_frame.grid(row = 0, column = 0, padx = 4, pady = (4), sticky = 'nsew')
+    book_id_label_frame.grid_rowconfigure(0, weight = 1)
+    book_id_label_frame.grid_columnconfigure(0, weight = 1)
+    book_id_label.grid(padx = 4, pady = 4, sticky = 'nsew')
+    book_id_entry.grid(row = 0, column = 1)
+    
+    confirm_btn = CTkButton(master = remove_book_window, text = "Confirm", font = ("Arial", 15), width = 100, height = 40)
+    confirm_btn.place(x = 186, y = 43)
+
+    #===========================================
+    
+def Day_limitation_window():
+    day_limit_window = CTkToplevel()
+    center_window(day_limit_window, 472, 200)
+    day_limit_window.title("Day Limitation")
+    day_limit_window.lift()
+    day_limit_window.grab_set()
+    day_limit_window.resizable(False,False)
+
+    fields = ["1 Week", "2 Weeks", "3 Weeks", "1 Month", "2 Months", "3 Months", "Unlimited"]
+    from customtkinter import StringVar, CTkRadioButton
+    selected_limit = StringVar(value=fields[0])
+
+    for col in range(3):
+        day_limit_window.grid_columnconfigure(col, weight=1)
+
+    for col, field in enumerate(fields[:3]):
+        radio_btn = CTkRadioButton(master=day_limit_window, text=field, variable=selected_limit, value=field)
+        radio_btn.grid(row=0, column=col, sticky="ew", padx=35, pady=10)
+
+    for col, field in enumerate(fields[3:6]):
+        radio_btn = CTkRadioButton(master=day_limit_window, text=field, variable=selected_limit, value=field)
+        radio_btn.grid(row=1, column=col, sticky="ew", padx=35, pady=10)
+
+    radio_btn = CTkRadioButton(master=day_limit_window, text=fields[6], variable=selected_limit, value=fields[6])
+    radio_btn.grid(row=2, column=1, sticky="ew", padx=35, pady=10)
+
+    confirm_btn = CTkButton(master=day_limit_window, text="Confirm", font=("Arial", 15), width=120, height=40)
+    confirm_btn.grid(row=3, column=0, columnspan=3, pady=(20,10))
+    
     
 #===========================================
 
@@ -136,7 +245,7 @@ borrow_btn.pack(fill = 'x', padx = 3, pady = (0,3))
 return_btn = CTkButton(master = borrow_frame, text = "Return Book", height = 40, font = ("Arial", 15), command = Return_book_window)
 return_btn.pack(fill = 'x', padx = 3, pady = (0,3))
 
-users_list_btn = CTkButton(master = borrow_frame, text = "Users List", height = 40, font = ("Arial", 15))
+users_list_btn = CTkButton(master = borrow_frame, text = "Users List", height = 40, font = ("Arial", 15), command = User_list_window)
 users_list_btn.pack(fill = 'x', padx = 3, pady = (0,3))
 
 borrow_status_frame = CTkFrame(master = borrow_frame, corner_radius = 6, fg_color='#1f6aa5')
@@ -146,10 +255,20 @@ borrow_status = CTkLabel(master = borrow_status_frame, text = "Status:\nBorrowed
                          bg_color = "transparent")
 borrow_status.pack()
 
-add_btn = CTkButton(master = borrow_frame, text = "Add Book", height = 40, font = ("Arial",15))
+stock_status_frame = CTkFrame(master = borrow_frame, corner_radius = 6, fg_color='#1f6aa5')
+stock_status_frame.pack(fill = 'x', padx = 3, pady = (0,3))
+
+stock_status = CTkLabel(master = stock_status_frame, text = "Stock: 4", height = 40, font = ("Arial",15),
+                         bg_color = "transparent")
+stock_status.pack()
+
+day_limit_btn = CTkButton(master = borrow_frame, text = "Day Limitation", height = 40, font = ("Arial",15), command = Day_limitation_window)
+day_limit_btn.pack(fill = 'x',padx = 3, pady = (0,3))
+
+add_btn = CTkButton(master = borrow_frame, text = "Add Book", height = 40, font = ("Arial",15), command = Add_book_window)
 add_btn.pack(fill = 'x',padx = 3, pady = (0,3))
 
-remove_btn = CTkButton(master = borrow_frame, text = "Remove Book", height = 40, font = ("Arial",15))
+remove_btn = CTkButton(master = borrow_frame, text = "Remove Book", height = 40, font = ("Arial",15), command = Remove_book_window)
 remove_btn.pack(fill = 'x', padx = 3, pady = (0,3))
 
 #===========================================
