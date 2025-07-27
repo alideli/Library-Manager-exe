@@ -56,3 +56,10 @@ def add_new_user(FN, LN, ID, PHN, AD, RD):
     save_users_info()
     return user_dict
 
+def update_borrowed_books(user_id, new_borrowed_books):
+    load_users_info()
+    for user in users:
+        if user['user_id'] == user_id:
+            user['borrowed_books'] = new_borrowed_books
+            break
+    save_users_info()

@@ -1,9 +1,14 @@
 import tkinter
 import customtkinter
+from CTkListbox import CTkListbox
 from customtkinter import *
 from tkinter import messagebox
 from func import add_new_user
+from func import update_borrowed_books
 import json
+
+selected_user_id = None
+selected_borrowed_books = []
         
 set_appearance_mode("System")
 set_default_color_theme("blue")
@@ -26,14 +31,14 @@ main_window.iconbitmap("./icon/Library_icon.ico")
 
 def new_user_btn_window():
     new_user_window = CTkToplevel()
-    center_window(new_user_window, 700, 317)
+    center_window(new_user_window, 705, 317)
     new_user_window.title("New User")
     new_user_window.lift()
     new_user_window.grab_set()
     new_user_window.resizable(False,False)
     
     
-    fields = ["First Name","Last Name", "ID Number", "Phone Number", "Address", "Date"]
+    fields = ["First Name","Last Name", "ID Number", "Phone Number", "Address", "Date Registered"]
     entries = []
     
     for i, field in enumerate(fields):
@@ -65,7 +70,7 @@ def new_user_btn_window():
 
 def find_user_btn_window():
     find_user_window = CTkToplevel()
-    center_window(find_user_window, 495, 182)
+    center_window(find_user_window, 490, 180)
     find_user_window.title("Find User")
     find_user_window.lift()
     find_user_window.grab_set()
@@ -90,7 +95,7 @@ def find_user_btn_window():
         fields_entry.grid(row = i, column = 1)
         
     def confirm():
-        global user_name_btn
+        global user_name_btn, selected_user_id, selected_borrowed_books
         users = []
         try:
             with open("./Users.json", "r", encoding="utf-8") as f:
@@ -102,32 +107,44 @@ def find_user_btn_window():
             values.append(entry.get())
         found_user = None
         for user in users:
-            if(values[0] and user['last_name'] == values[0]) or (values[1] and user['id_number'] == values[1]) or (values[2] and str(user['user_id']) == values[2]):
+            if (values[0] and user['last_name'] == values[0]) or (values[1] and user['id_number'] == values[1]) or (values[2] and str(user['user_id']) == values[2]):
                 found_user = user
                 break
         if found_user:
             user_name_btn.configure(text = f"{found_user['first_name']} {found_user['last_name']}")
+            selected_user_id = str(found_user['user_id'])
+            selected_borrowed_books = found_user['borrowed_books']
             messagebox.showinfo("User Found",f"User: {found_user['first_name']} {found_user['last_name']}")
             find_user_window.destroy()
         else:
             messagebox.showwarning("Not Found", "User not found")
                 
     confirm_btn = CTkButton(master = find_user_window, text = "Confirm", font = ("Arial", 15), width = 100, height = 40, command = confirm)
-    confirm_btn.place(x = 210, y = 132)
+    confirm_btn.place(x = 195, y = 132)
 
 #===========================================
 
 def Borrow_book_window():
-    borrow_window = messagebox.askyesno("Borrow Confirm",f"Are you sure to Borrow Book \"x\" for user \"y\"")
+    global selected_user_id, selected_borrowed_books
+    borrow_window = messagebox.askyesno(f"Borrow Confirm",f"Are you sure to Borrow Book \"x\" for user \"y\"")
     if(borrow_window):
+        book_id = "Book_id_sample"
+        selected_borrowed_books.append(book_id)
+        update_borrowed_books(selected_user_id, selected_borrowed_books)
         messagebox.showwarning("Confirmed","Book Borrowed")
+            
     else:
         messagebox.showwarning("Not Confirmed","Canceled")
 
 
 def Return_book_window():
+    global selected_user_id, selected_borrowed_books
     return_window = messagebox.askyesno("Return Confirm",f"Are you sure to return book \"x\" for user \"y\"")
     if(return_window):
+        book_id = "Book_id_sample"
+        if book_id in selected_borrowed_books:
+            selected_borrowed_books.remove(book_id)
+            update_borrowed_books(selected_user_id, selected_borrowed_books)
         messagebox.showwarning("Confirmed","Book Returned")
     else:
         messagebox.showwarning("Not Confirmed","Canceled")
@@ -135,30 +152,105 @@ def Return_book_window():
 #===========================================
     
 def User_name_window():
+    global selected_user_id
+    
     username_window = CTkToplevel()
-    center_window(username_window, 850, 550)
+    center_window(username_window, 712, 345)
     username_window.title("Users Information")
     username_window.lift()
     username_window.grab_set()
     username_window.resizable(False,False)
     
-    search_box_label = CTkFrame(master = username_window, border_color = '#1f6aa5', border_width = 2)
-    search_box_label.pack(fill = 'x', padx = 10, pady = 10)
+    fields = [
+        ("First Name", "first_name"),
+        ("Last Name", "last_name"),
+        ("ID Number", "id_number"),
+        ("Phone Number", "phone_number"),
+        ("Address", "address"),
+        ("Date Registered", "register_date"),
+        ("User_ID", "user_id"),
+        ("Borrowed_Books", "borrowed_books")
+    ]
 
-    search_box = CTkTextbox(master = search_box_label, font = ("Arial", 15), height = 1)
-    search_box.pack(fill = 'x', side = 'left', expand = True, padx = 2, pady = 3)
+    entries = []
+    for i, (label_text, _) in enumerate(fields):
+        fields_label_frame = CTkFrame(master=username_window, fg_color='#1f6aa5', corner_radius=6, width=100, height=27)
+        fields_label = CTkLabel(master=fields_label_frame, text=label_text, bg_color='transparent', height=27, font=("Arial", 15))
+        fields_entry = CTkEntry(master=username_window, width=580, height=35)
+        entries.append(fields_entry)
 
-    search_button = CTkButton(master = search_box_label, text = "Search", width = 12, font = ("Arial", 15))
-    search_button.pack(fill = 'x', expand = True, padx = (0,4), pady = 2)
-    
-    book_list_text_frame = CTkFrame(master = username_window)
-    book_list_text_frame.pack(fill = 'both', padx = 10, pady = 10, expand = True)
+        fields_label_frame.grid(row=i, column=0, padx=4, pady=(4), sticky='nsew')
+        fields_label_frame.grid_rowconfigure(0, weight=1)
+        fields_label_frame.grid_columnconfigure(0, weight=1)
+        fields_label.grid(padx=4, pady=4, sticky='nsew')
+        fields_entry.grid(row=i, column=1)
 
-    book_list_text = CTkTextbox(master = book_list_text_frame, height = 450, border_color = '#1f6aa5', border_width = 2)
-    book_list_text.pack(fill = 'both', expand = True)
-    
+    user_info = None
+    try:
+        with open("./Users.json", "r", encoding="utf-8") as f:
+            users = json.load(f)
+            for user in users:
+                if str(user['user_id']) == str(selected_user_id):
+                    user_info = user
+                    break
+    except Exception as e:
+        pass
+
+    if user_info:
+        for i, (_, key) in enumerate(fields):
+            value = user_info.get(key, "-")
+            if key == "borrowed_books" and isinstance(value, list):
+                value = ', '.join(str(v) for v in value) if value else '---'
+            entries[i].insert(0, str(value))
+            entries[i].configure(state='readonly')
+    else:
+        for entry in entries:
+            entry.insert(0, "None")
+            entry.configure(state='readonly')
 #===========================================
-    
+   
+def User_list_window2(user):
+    userlist_window2 = CTkToplevel()
+    center_window(userlist_window2, 712, 420)
+    userlist_window2.title("Users Information")
+    userlist_window2.lift()
+    userlist_window2.grab_set()
+    userlist_window2.resizable(False,False)
+
+    fields = [
+        ("First Name", "first_name"),
+        ("Last Name", "last_name"),
+        ("ID Number", "id_number"),
+        ("Phone Number", "phone_number"),
+        ("Address", "address"),
+        ("Date Registered", "register_date"),
+        ("User ID", "user_id"),
+        ("Borrowed Books", "borrowed_books")
+    ]
+
+    for i, (label, key) in enumerate(fields):
+        fields_label_frame = CTkFrame(master = userlist_window2, fg_color = '#1f6aa5', corner_radius = 6, width = 100, height = 27)
+        fields_label = CTkLabel(master = fields_label_frame, text = label, bg_color = 'transparent', height = 27, font = ("Arial", 15))
+        fields_entry = CTkEntry(master = userlist_window2, width = 580, height = 35)
+        value = user.get(key, "-")
+        if key == "borrowed_books" and isinstance(value, list):
+            value = ', '.join(str(v) for v in value) if value else '---'
+        fields_entry.insert(0, str(value))
+        fields_entry.configure(state='readonly')
+
+        fields_label_frame.grid(row = i, column = 0, padx = 4, pady = (4), sticky = 'nsew')
+        fields_label_frame.grid_rowconfigure(0, weight = 1)
+        fields_label_frame.grid_columnconfigure(0, weight = 1)
+        fields_label.grid(padx = 4, pady = 4, sticky = 'nsew')
+        fields_entry.grid(row = i, column = 1)
+        
+    confirm_btn = CTkButton(master = userlist_window2, text = "Confirm", font = ("Arial", 15), width = 100, height = 40)
+    confirm_btn.place(x = 305, y = 350)
+    delete_user_btn = CTkButton(master = userlist_window2, text = "Remove User", font = ("Arial", 15), width = 100, height = 40)
+    delete_user_btn.place(x = 10, y = 350)
+        
+#===========================================   
+
 def User_list_window():
     userlist_window = CTkToplevel()
     center_window(userlist_window, 900, 800)
@@ -176,14 +268,62 @@ def User_list_window():
     search_button = CTkButton(master = search_box_frame, text = "Search", width = 12, font = ("Arial", 15))
     search_button.pack(fill = 'x', expand = True, padx = (0,4), pady = 2)
     
-    users_list_text_frame = CTkFrame(master = userlist_window)
-    users_list_text_frame.pack(fill = 'both', padx = 10, pady = 10, expand = True)
+    users_list_box_frame = CTkFrame(master = userlist_window)
+    users_list_box_frame.pack(fill = 'both', padx = 10, pady = 10, expand = True)
 
-    users_list_text = CTkTextbox(master = users_list_text_frame, height = 550, border_color = '#1f6aa5', border_width = 2)
-    users_list_text.pack(fill = 'both', expand = True)
-    
+    users_list_box = CTkListbox(master = users_list_box_frame, height = 550, border_color = '#1f6aa5', border_width = 2)
+    users_list_box.pack(fill = 'both', expand = True)
+
+    try:
+        with open("./Users.json", "r", encoding="utf-8") as f:
+            users = json.load(f)
+    except:
+        users = []
+
+    current_user_list = users.copy()
+
+    def fill_listbox(user_list):
+        users_list_box.delete(0, 'end')
+        for user in user_list:
+            preview = f"{user.get('first_name','')} {user.get('last_name','')} | ID: {user.get('user_id','')}"
+            users_list_box.insert('end', preview)
+
+    fill_listbox(current_user_list)
+
+
+    def search_users(event=None):
+        query = search_box.get("1.0", "end").strip().lower()
+        if not query:
+            filtered = users
+        else:
+            filtered = []
+            for user in users:
+                # Concatenate all user values into a single string for multi-word search
+                user_text = ' '.join(str(value) for value in user.values()).lower()
+                if query in user_text:
+                    filtered.append(user)
+        current_user_list.clear()
+        current_user_list.extend(filtered)
+        fill_listbox(current_user_list)
+
+    search_button.configure(command=search_users)
+    search_box.bind("<KeyRelease>", search_users)
+
+
+    def on_user_double_click(event=None):
+        selection = users_list_box.curselection()
+        if selection is None or selection == '':
+            return
+        index = selection
+        if 0 <= index < len(current_user_list):
+            user = current_user_list[index]
+            User_list_window2(user)
+
+    users_list_box.bind('<Double-Button-1>', on_user_double_click)
+
+
 #===========================================
-    
+
 def Add_book_window():
     add_book_window = CTkToplevel()
     center_window(add_book_window, 700, 350)
