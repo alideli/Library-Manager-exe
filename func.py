@@ -14,7 +14,7 @@ class User:
         self.borrowed_books = []
 
 class Book:
-    def __init__(self):
+    def __init__(self, BN, BA, PN, PD, BID, BST, BC):
         self.book_name = BN
         self.book_author = BA
         self.publisher_name = PN
@@ -116,6 +116,38 @@ def add_new_book(book_name, author, publisher, publish_date, stock, category):
     books.append(book_dict)
     save_books_info()
     return book_dict
+
+def remove_book_by_id(book_id):
+    """
+    Remove a book from Books.json by its book_id. Returns True if removed, False if not found.
+    """
+    import os
+    import json
+    books_path = "./Books.json"
+    if not os.path.exists(books_path):
+        return False
+    with open(books_path, "r", encoding="utf-8") as f:
+        books = json.load(f)
+    initial_len = len(books)
+    books = [book for book in books if str(book.get('book_id')) != str(book_id)]
+    if len(books) < initial_len:
+        with open(books_path, "w", encoding="utf-8") as f:
+            json.dump(books, f, ensure_ascii=False, indent=4)
+        return True
+    return False
+
+def get_book_by_id(book_id):
+    import os
+    import json
+    books_path = "./Books.json"
+    if not os.path.exists(books_path):
+        return None
+    with open(books_path, "r", encoding="utf-8") as f:
+        books = json.load(f)
+    for book in books:
+        if str(book.get('book_id')) == str(book_id):
+            return book
+    return None
 
 
 

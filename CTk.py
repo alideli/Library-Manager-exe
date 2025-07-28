@@ -327,7 +327,7 @@ def User_list_window():
 
 def Add_book_window():
     add_book_window = CTkToplevel()
-    center_window(add_book_window, 700, 350)
+    center_window(add_book_window, 700, 303)
     add_book_window.title("Users Information")
     add_book_window.lift()
     add_book_window.grab_set()
@@ -358,7 +358,7 @@ def Add_book_window():
         add_book_window.destroy()
 
     confirm_btn = CTkButton(master=add_book_window, text="Confirm", font=("Arial", 15), width=100, height=40, command=confirm)
-    confirm_btn.place(x=300, y=302)
+    confirm_btn.place(x=300, y=258)
     
     #===========================================
     
@@ -381,7 +381,29 @@ def Remove_book_window():
     book_id_label.grid(padx = 4, pady = 4, sticky = 'nsew')
     book_id_entry.grid(row = 0, column = 1)
     
-    confirm_btn = CTkButton(master = remove_book_window, text = "Confirm", font = ("Arial", 15), width = 100, height = 40)
+
+
+    def confirm():
+        from func import remove_book_by_id, get_book_by_id
+        book_id = book_id_entry.get().strip()
+        if not book_id:
+            messagebox.showwarning("Error", "Please enter a Book ID.")
+            return
+        book = get_book_by_id(book_id)
+        if not book:
+            messagebox.showwarning("Not Found", f"Book with ID {book_id} not found.")
+            return
+        book_name = book.get('book_name', '-')
+        answer = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete this book?\n\nName: {book_name}\nID: {book_id}")
+        if answer:
+            removed = remove_book_by_id(book_id)
+            if removed:
+                messagebox.showinfo("Success", f"Book with ID {book_id} removed.")
+                remove_book_window.destroy()
+            else:
+                messagebox.showwarning("Error", f"Book with ID {book_id} could not be removed.")
+                
+    confirm_btn = CTkButton(master = remove_book_window, text = "Confirm", font = ("Arial", 15), width = 100, height = 40, command=confirm)
     confirm_btn.place(x = 186, y = 43)
 
     #===========================================
@@ -475,18 +497,122 @@ remove_btn.pack(fill = 'x', padx = 3, pady = (0,3))
 
 #===========================================
 
-book_list_text_frame = CTkFrame(master = main_window)
-book_list_text_frame.pack(fill = 'both', padx = 10, pady = 10, expand = True)
-
-book_list_text = CTkTextbox(master = book_list_text_frame, height = 550, border_color = '#1f6aa5', border_width = 2)
-book_list_text.pack(fill = 'both', expand = True)
-
-#===========================================
-
-
-    
+book_list_box_frame = CTkFrame(master = main_window)
+book_list_box_frame.pack(fill = 'both', padx = 10, pady = 10, expand = True)
 
 
 
+book_list_box = CTkListbox(master = book_list_box_frame, height = 550, border_color = '#1f6aa5', border_width = 2)
+book_list_box.pack(fill = 'both', expand = True)
+
+try:
+    with open("./Books.json", "r", encoding="utf-8") as f:
+        all_books = json.load(f)
+except:
+    all_books = []
+
+
+def fill_book_list_box(book_list=None):
+    if book_list is None:
+        book_list = all_books
+    book_list_box.delete(0, 'end')
+    for book in book_list:
+        name = book.get('book_name', '-')
+        code = book.get('book_id', '-')
+        book_list_box.insert('end', f"{name} | ID: {code}")
+
+fill_book_list_box()
+
+
+filtered_books = []
+
+def search_books(event=None):
+    global filtered_books
+    query = search_box.get("1.0", "end").strip().lower()
+    try:
+        with open("./Books.json", "r", encoding="utf-8") as f:
+            books = json.load(f)
+    except:
+        books = []
+    if not query:
+        filtered_books = books
+    else:
+        filtered_books = []
+        for book in books:
+            book_text = ' '.join(str(value) for value in book.values()).lower()
+            if query in book_text:
+                filtered_books.append(book)
+    book_list_box.delete(0, 'end')
+    for book in filtered_books:
+        name = book.get('book_name', '-')
+        code = book.get('book_id', '-')
+        book_list_box.insert('end', f"{name} | ID: {code}")
+
+
+def on_book_double_click(event=None):
+    selection = book_list_box.curselection()
+    # CTkListbox.curselection() ممکن است مقدار int یا tuple یا لیست باشد
+    if selection is None:
+        return
+    if isinstance(selection, (list, tuple)):
+        if not selection:
+            return
+        index = selection[0]
+    else:
+        index = selection
+    try:
+        index = int(index)
+    except Exception:
+        return
+    if 0 <= index < len(filtered_books):
+        book = filtered_books[index]
+        book_information_window(book)
+
+book_list_box.bind('<Double-Button-1>', on_book_double_click)
+
+# مقداردهی اولیه لیست کتاب‌ها
+search_books()
+
+def book_information_window(book):
+    book_info_window = CTkToplevel()
+    center_window(book_info_window, 712, 420)
+    book_info_window.title("Books Information")
+    book_info_window.lift()
+    book_info_window.grab_set()
+    book_info_window.resizable(False,False)
+
+    fields = [
+        ("Book Name", "book_name"),
+        ("Author", "author"),
+        ("Publisher Name", "publisher"),
+        ("Publish Date", "publish_date"),
+        ("Book ID", "book_id"),
+        ("Stock", "stock"),
+        ("Category", "category")
+    ]
+
+    for i, (label, key) in enumerate(fields):
+        fields_label_frame = CTkFrame(master = book_info_window, fg_color = '#1f6aa5', corner_radius = 6, width = 100, height = 27)
+        fields_label = CTkLabel(master = fields_label_frame, text = label, bg_color = 'transparent', height = 27, font = ("Arial", 15))
+        fields_entry = CTkEntry(master = book_info_window, width = 580, height = 35)
+        value = book.get(key, "-")
+        if key == "borrowed_books" and isinstance(value, list):
+            value = ', '.join(str(v) for v in value) if value else '---'
+        fields_entry.insert(0, str(value))
+        fields_entry.configure(state='readonly')
+
+        fields_label_frame.grid(row = i, column = 0, padx = 4, pady = (4), sticky = 'nsew')
+        fields_label_frame.grid_rowconfigure(0, weight = 1)
+        fields_label_frame.grid_columnconfigure(0, weight = 1)
+        fields_label.grid(padx = 4, pady = 4, sticky = 'nsew')
+        fields_entry.grid(row = i, column = 1)
+        
+    confirm_btn = CTkButton(master = book_info_window, text = "Confirm", font = ("Arial", 15), width = 100, height = 40)
+    confirm_btn.place(x = 305, y = 350)
+    delete_user_btn = CTkButton(master = book_info_window, text = "Remove User", font = ("Arial", 15), width = 100, height = 40)
+    delete_user_btn.place(x = 10, y = 350)
+
+search_button.configure(command=search_books)
+search_box.bind("<KeyRelease>", search_books)
 
 main_window.mainloop()
