@@ -350,7 +350,6 @@ def Add_book_window():
         fields_label.grid(padx = 4, pady = 4, sticky = 'nsew')
         fields_entry.grid(row = i, column = 1)
     
-
     def confirm():
         values = [entry.get() for entry in entries]
         book = add_new_book(*values)
@@ -381,8 +380,6 @@ def Remove_book_window():
     book_id_label.grid(padx = 4, pady = 4, sticky = 'nsew')
     book_id_entry.grid(row = 0, column = 1)
     
-
-
     def confirm():
         from func import remove_book_by_id, get_book_by_id
         book_id = book_id_entry.get().strip()
@@ -409,6 +406,7 @@ def Remove_book_window():
     #===========================================
     
 def Day_limitation_window():
+    global day_limit_btn
     day_limit_window = CTkToplevel()
     center_window(day_limit_window, 472, 200)
     day_limit_window.title("Day Limitation")
@@ -434,7 +432,13 @@ def Day_limitation_window():
     radio_btn = CTkRadioButton(master=day_limit_window, text=fields[6], variable=selected_limit, value=fields[6])
     radio_btn.grid(row=2, column=1, sticky="ew", padx=35, pady=10)
 
-    confirm_btn = CTkButton(master=day_limit_window, text="Confirm", font=("Arial", 15), width=120, height=40)
+    def confirm():
+        value = selected_limit.get()
+        if day_limit_btn is not None:
+            day_limit_btn.configure(text=f"Day Limit: {value}")
+        day_limit_window.destroy()
+
+    confirm_btn = CTkButton(master=day_limit_window, text="Confirm", font=("Arial", 15), width=120, height=40, command=confirm)
     confirm_btn.grid(row=3, column=0, columnspan=3, pady=(20,10))
     
     
@@ -500,8 +504,6 @@ remove_btn.pack(fill = 'x', padx = 3, pady = (0,3))
 book_list_box_frame = CTkFrame(master = main_window)
 book_list_box_frame.pack(fill = 'both', padx = 10, pady = 10, expand = True)
 
-
-
 book_list_box = CTkListbox(master = book_list_box_frame, height = 550, border_color = '#1f6aa5', border_width = 2)
 book_list_box.pack(fill = 'both', expand = True)
 
@@ -519,7 +521,8 @@ def fill_book_list_box(book_list=None):
     for book in book_list:
         name = book.get('book_name', '-')
         code = book.get('book_id', '-')
-        book_list_box.insert('end', f"{name} | ID: {code}")
+        stock = book.get('stock', '-')
+        book_list_box.insert('end', f"{name} | ID: {code} | Stock: {stock}")
 
 fill_book_list_box()
 
@@ -546,12 +549,12 @@ def search_books(event=None):
     for book in filtered_books:
         name = book.get('book_name', '-')
         code = book.get('book_id', '-')
-        book_list_box.insert('end', f"{name} | ID: {code}")
+        stock = book.get('stock', '-')
+        book_list_box.insert('end', f"{name} | ID: {code} | Stock: {stock}")
 
 
 def on_book_double_click(event=None):
     selection = book_list_box.curselection()
-    # CTkListbox.curselection() ممکن است مقدار int یا tuple یا لیست باشد
     if selection is None:
         return
     if isinstance(selection, (list, tuple)):
@@ -567,10 +570,39 @@ def on_book_double_click(event=None):
     if 0 <= index < len(filtered_books):
         book = filtered_books[index]
         book_information_window(book)
+        stock = book.get('stock', '-')
+        stock_status.configure(text=f"Stock: {stock}")
+
+
+def on_book_select(event=None):
+    selection = book_list_box.curselection()
+    if selection is None:
+        stock_status.configure(text="Stock: None Selected")
+        return
+    if isinstance(selection, (list, tuple)):
+        if not selection:
+            stock_status.configure(text="Stock: None Selected")
+            return
+        index = selection[0]
+    else:
+        index = selection
+    try:
+        index = int(index)
+    except Exception:
+        stock_status.configure(text="Stock: None Selected")
+        return
+    if 0 <= index < len(filtered_books):
+        book = filtered_books[index]
+        stock = book.get('stock', '-')
+        stock_status.configure(text=f"Stock: {stock}")
+    else:
+        stock_status.configure(text="Stock: None Selected")
 
 book_list_box.bind('<Double-Button-1>', on_book_double_click)
+book_list_box.bind('<<ListboxSelect>>', on_book_select)
 
-# مقداردهی اولیه لیست کتاب‌ها
+stock_status.configure(text="Stock: None Selected")
+
 search_books()
 
 def book_information_window(book):
