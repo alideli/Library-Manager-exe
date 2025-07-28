@@ -12,6 +12,16 @@ class User:
         self.register_date = RD
         self.user_id = UID
         self.borrowed_books = []
+
+class Book:
+    def __init__(self):
+        self.book_name = BN
+        self.book_author = BA
+        self.publisher_name = PN
+        self.publish_date = PD
+        self.book_id = BID
+        self.book_stock = BST
+        self.book_category = BC
         
 users = []
 user_id_list = []
@@ -63,3 +73,51 @@ def update_borrowed_books(user_id, new_borrowed_books):
             user['borrowed_books'] = new_borrowed_books
             break
     save_users_info()
+
+books = []
+assigned_book_ids = set()
+book_id_list = list(range(1, 1000001))
+
+def load_books_info():
+    global books, assigned_book_ids
+    assigned_book_ids.clear()
+    if os.path.exists("./Books.json"):
+        with open("./Books.json", "r", encoding="utf-8") as f:
+            books = json.load(f)
+            for book in books:
+                assigned_book_ids.add(book['book_id'])
+    else:
+        books = []
+
+def save_books_info():
+    with open("./Books.json", "w", encoding="utf-8") as f:
+        json.dump(books, f, ensure_ascii=False, indent=4)
+
+def generate_sequential_book_id():
+    load_books_info()
+    for bid in book_id_list:
+        if bid not in assigned_book_ids:
+            assigned_book_ids.add(bid)
+            return bid
+    raise Exception("No available book ID!")
+
+def add_new_book(book_name, author, publisher, publish_date, stock, category):
+    load_books_info()
+    book_id = generate_sequential_book_id()
+    book_dict = {
+        "book_name": book_name,
+        "author": author,
+        "publisher": publisher,
+        "publish_date": publish_date,
+        "book_id": book_id,
+        "stock": stock,
+        "category": category
+    }
+    books.append(book_dict)
+    save_books_info()
+    return book_dict
+
+
+
+
+

@@ -5,6 +5,7 @@ from customtkinter import *
 from tkinter import messagebox
 from func import add_new_user
 from func import update_borrowed_books
+from func import add_new_book
 import json
 
 selected_user_id = None
@@ -332,7 +333,8 @@ def Add_book_window():
     add_book_window.grab_set()
     add_book_window.resizable(False,False)
     
-    fields = ["Book Name", "Author", "Publisher Name", "Publish Date", "Book ID", "Stock", "Category"]
+    fields = ["Book Name", "Author", "Publisher Name", "Publish Date", "Stock", "Category"]
+    entries = []
     
     for i,field in enumerate(fields):
         fields_label_frame = CTkFrame(master = add_book_window, fg_color = '#1f6aa5', corner_radius = 6,
@@ -340,6 +342,7 @@ def Add_book_window():
         fields_label = CTkLabel(master = fields_label_frame, text = field, bg_color = 'transparent', height = 27,
                                 font = ("Arial", 15))
         fields_entry = CTkEntry(master = add_book_window, width = 575, height = 35)
+        entries.append(fields_entry)
         
         fields_label_frame.grid(row = i, column = 0, padx = 4, pady = (4), sticky = 'nsew')
         fields_label_frame.grid_rowconfigure(0, weight = 1)
@@ -347,8 +350,15 @@ def Add_book_window():
         fields_label.grid(padx = 4, pady = 4, sticky = 'nsew')
         fields_entry.grid(row = i, column = 1)
     
-    confirm_btn = CTkButton(master = add_book_window, text = "Confirm", font = ("Arial", 15), width = 100, height = 40)
-    confirm_btn.place(x = 300, y = 302)
+
+    def confirm():
+        values = [entry.get() for entry in entries]
+        book = add_new_book(*values)
+        messagebox.showinfo("Success", f"Book added!\nBook ID: {book['book_id']}")
+        add_book_window.destroy()
+
+    confirm_btn = CTkButton(master=add_book_window, text="Confirm", font=("Arial", 15), width=100, height=40, command=confirm)
+    confirm_btn.place(x=300, y=302)
     
     #===========================================
     
