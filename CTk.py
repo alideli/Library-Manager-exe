@@ -10,6 +10,7 @@ import json
 
 selected_user_id = None
 selected_borrowed_books = []
+selected_book_id = None
         
 set_appearance_mode("System")
 set_default_color_theme("blue")
@@ -39,15 +40,20 @@ def new_user_btn_window():
     new_user_window.resizable(False,False)
     
     
+
+    import datetime
     fields = ["First Name","Last Name", "ID Number", "Phone Number", "Address", "Date Registered"]
     entries = []
-    
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     for i, field in enumerate(fields):
         fields_label_frame = CTkFrame(master = new_user_window, fg_color = '#1f6aa5', corner_radius = 6,
                                       width = 100, height = 27)
         fields_label = CTkLabel(master = fields_label_frame, text = field, bg_color = 'transparent', height = 27,
                                 font = ("Arial", 15))
         fields_entry = CTkEntry(master = new_user_window, width = 580, height = 35)
+        if field == "Date Registered":
+            fields_entry.insert(0, now_str)
+            fields_entry.configure(state='readonly')
         entries.append(fields_entry)
 
         fields_label_frame.grid(row = i, column = 0, padx = 4, pady = (4), sticky = 'nsew')
@@ -55,7 +61,7 @@ def new_user_btn_window():
         fields_label_frame.grid_columnconfigure(0, weight = 1)
         fields_label.grid(padx = 4, pady = 4, sticky = 'nsew')
         fields_entry.grid(row = i, column = 1)
-        
+
     def confirm():
         values = []
         for entry in entries:
@@ -63,7 +69,7 @@ def new_user_btn_window():
         user = add_new_user(*values)
         messagebox.showinfo("Success", f"User added successfully\nUser ID: {user['user_id']}")
         new_user_window.destroy()
-        
+
     confirm_btn = CTkButton(master = new_user_window, text = "Confirm", font = ("Arial", 15), width = 100, height = 40, command = confirm)
     confirm_btn.place(x = 300, y = 265)
     
@@ -118,7 +124,7 @@ def find_user_btn_window():
             messagebox.showinfo("User Found",f"User: {found_user['first_name']} {found_user['last_name']}")
             find_user_window.destroy()
         else:
-            messagebox.showwarning("Not Found", "User not found")
+            pass
                 
     confirm_btn = CTkButton(master = find_user_window, text = "Confirm", font = ("Arial", 15), width = 100, height = 40, command = confirm)
     confirm_btn.place(x = 195, y = 132)
@@ -126,29 +132,78 @@ def find_user_btn_window():
 #===========================================
 
 def Borrow_book_window():
-    global selected_user_id, selected_borrowed_books
-    borrow_window = messagebox.askyesno(f"Borrow Confirm",f"Are you sure to Borrow Book \"x\" for user \"y\"")
-    if(borrow_window):
-        book_id = "Book_id_sample"
-        selected_borrowed_books.append(book_id)
+    global selected_user_id, selected_borrowed_books, selected_book_id
+    if day_limit_btn.cget("text") == "Day Limitation":
+        messagebox.showwarning("Error", "Please set the day limitation before borrowing a book.")
+        return
+    borrow_window = messagebox.askyesno(f"Borrow Confirm", f"Are you sure to Borrow Book for user?")
+    if borrow_window:
+        if selected_book_id is None:
+            messagebox.showwarning("Error", "No book selected.")
+            return
+        book_id = selected_book_id
+        try:
+            with open("./Books.json", "r", encoding="utf-8") as f:
+                books = json.load(f)
+        except Exception:
+            books = []
+        book_found = False
+        for book in books:
+            if str(book.get('book_id')) == str(book_id):
+                try:
+                    stock = int(book.get('stock', 0))
+                except Exception:
+                    stock = 0
+                if stock > 0:
+                    book['stock'] = stock - 1
+                    stock_status.configure(text=f"Stock: {book['stock']}")
+                    book_found = True
+                else:
+                    messagebox.showwarning("Error", "No stock available for this book.")
+                    return
+        if book_found:
+            with open("./Books.json", "w", encoding="utf-8") as f:
+                json.dump(books, f, ensure_ascii=False, indent=2)
+        import datetime
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        day_limit_value = day_limit_btn.cget('text').replace('Day Limit: ', '').strip()
+        if selected_borrowed_books and isinstance(selected_borrowed_books[0], dict):
+            selected_borrowed_books.append({"book_id": book_id, "borrow_date": now_str, "day_limit": day_limit_value})
+        else:
+            selected_borrowed_books = [b if isinstance(b, dict) else {"book_id": b, "borrow_date": now_str, "day_limit": day_limit_value} for b in selected_borrowed_books]
+            selected_borrowed_books.append({"book_id": book_id, "borrow_date": now_str, "day_limit": day_limit_value})
         update_borrowed_books(selected_user_id, selected_borrowed_books)
-        messagebox.showwarning("Confirmed","Book Borrowed")
-            
+        messagebox.showinfo("Confirmed", "Book Borrowed")
     else:
-        messagebox.showwarning("Not Confirmed","Canceled")
+        pass
 
 
 def Return_book_window():
-    global selected_user_id, selected_borrowed_books
-    return_window = messagebox.askyesno("Return Confirm",f"Are you sure to return book \"x\" for user \"y\"")
-    if(return_window):
-        book_id = "Book_id_sample"
-        if book_id in selected_borrowed_books:
-            selected_borrowed_books.remove(book_id)
+    global selected_user_id, selected_borrowed_books, selected_book_id
+    return_window = messagebox.askyesno("Return Confirm", f"Are you sure to return book for user?")
+    if return_window:
+        if selected_book_id is None:
+            messagebox.showwarning("Error", "No book selected.")
+            return
+        book_id = selected_book_id
+        removed = False
+        if selected_borrowed_books and isinstance(selected_borrowed_books[0], dict):
+            for b in selected_borrowed_books:
+                if str(b.get("book_id")) == str(book_id):
+                    selected_borrowed_books.remove(b)
+                    removed = True
+                    break
+        else:
+            if book_id in selected_borrowed_books:
+                selected_borrowed_books.remove(book_id)
+                removed = True
+        if removed:
             update_borrowed_books(selected_user_id, selected_borrowed_books)
-        messagebox.showwarning("Confirmed","Book Returned")
+            messagebox.showinfo("Confirmed", "Book Returned")
+        else:
+            messagebox.showwarning("Error", "Selected book is not in the borrowed list.")
     else:
-        messagebox.showwarning("Not Confirmed","Canceled")
+        pass
     
 #===========================================
     
@@ -156,7 +211,7 @@ def User_name_window():
     global selected_user_id
     
     username_window = CTkToplevel()
-    center_window(username_window, 712, 345)
+    center_window(username_window, 712, 500)
     username_window.title("Users Information")
     username_window.lift()
     username_window.grab_set()
@@ -174,10 +229,13 @@ def User_name_window():
     ]
 
     entries = []
-    for i, (label_text, _) in enumerate(fields):
+    for i, (label_text, key) in enumerate(fields):
         fields_label_frame = CTkFrame(master=username_window, fg_color='#1f6aa5', corner_radius=6, width=100, height=27)
         fields_label = CTkLabel(master=fields_label_frame, text=label_text, bg_color='transparent', height=27, font=("Arial", 15))
-        fields_entry = CTkEntry(master=username_window, width=580, height=35)
+        if key == "borrowed_books":
+            fields_entry = CTkTextbox(master=username_window, width=580, height=180)
+        else:
+            fields_entry = CTkEntry(master=username_window, width=580, height=35)
         entries.append(fields_entry)
 
         fields_label_frame.grid(row=i, column=0, padx=4, pady=(4), sticky='nsew')
@@ -198,21 +256,79 @@ def User_name_window():
         pass
 
     if user_info:
+        try:
+            with open("./Books.json", "r", encoding="utf-8") as f:
+                books = json.load(f)
+        except Exception:
+            books = []
+        def get_book_name(book_id):
+            for b in books:
+                if str(b.get('book_id')) == str(book_id):
+                    return b.get('book_name', str(book_id))
+            return str(book_id)
+
+        user_day_limit = None
+        if 'day_limit' in user_info:
+            user_day_limit = user_info['day_limit']
+        elif hasattr(globals().get('day_limit_btn', None), 'cget'):
+            user_day_limit = day_limit_btn.cget('text').replace('Day Limit: ', '')
         for i, (_, key) in enumerate(fields):
             value = user_info.get(key, "-")
-            if key == "borrowed_books" and isinstance(value, list):
-                value = ', '.join(str(v) for v in value) if value else '---'
-            entries[i].insert(0, str(value))
-            entries[i].configure(state='readonly')
+            if key == "borrowed_books":
+                if value is None or value == '' or value == '-':
+                    value = []
+                elif isinstance(value, str):
+                    try:
+                        import ast
+                        value = ast.literal_eval(value)
+                        if not isinstance(value, list):
+                            value = [value]
+                    except Exception:
+                        value = [value]
+                import datetime
+                display_lines = []
+                if isinstance(value, list) and value:
+                    for v in value:
+                        if isinstance(v, dict):
+                            book_id = v.get("book_id", "-")
+                            borrow_date = v.get("borrow_date", "-")
+                            day_limit = v.get("day_limit", user_day_limit if user_day_limit else '-')
+                            # محاسبه روزهای باقی‌مانده
+                            days_left = '-'
+                            if borrow_date != '-' and day_limit != '-' and day_limit.lower() != 'unlimited':
+                                try:
+                                    dt_borrow = datetime.datetime.strptime(borrow_date, "%Y-%m-%d %H:%M:%S")
+                                    limit_days = int(day_limit.split()[0])
+                                    delta = (dt_borrow + datetime.timedelta(days=limit_days)) - datetime.datetime.now()
+                                    days_left = max(delta.days, 0)
+                                except Exception:
+                                    days_left = '-'
+                            elif day_limit.lower() == 'unlimited':
+                                days_left = 'Unlimited'
+                            display_lines.append(f"{get_book_name(book_id)} (ID:{book_id})\nBorrowed: {borrow_date}\nLimit: {day_limit}\nDays left: {days_left}\n-------------------")
+                        else:
+                            display_lines.append(f"{get_book_name(v)} (ID:{v})\n-\n-\n-\n-------------------")
+                    value = '\n'.join(display_lines)
+                else:
+                    value = '---'
+                entries[i].insert("1.0", str(value))
+                entries[i].configure(state='disabled')
+            else:
+                entries[i].insert(0, str(value))
+                entries[i].configure(state='readonly')
     else:
-        for entry in entries:
-            entry.insert(0, "None")
-            entry.configure(state='readonly')
+        for i, entry in enumerate(entries):
+            if fields[i][1] == "borrowed_books":
+                entry.insert("1.0", "None")
+                entry.configure(state='disabled')
+            else:
+                entry.insert(0, "None")
+                entry.configure(state='readonly')
 #===========================================
    
 def User_list_window2(user):
     userlist_window2 = CTkToplevel()
-    center_window(userlist_window2, 712, 420)
+    center_window(userlist_window2, 712, 500)
     userlist_window2.title("Users Information")
     userlist_window2.lift()
     userlist_window2.grab_set()
@@ -229,26 +345,83 @@ def User_list_window2(user):
         ("Borrowed Books", "borrowed_books")
     ]
 
+    try:
+        with open("./Books.json", "r", encoding="utf-8") as f:
+            books = json.load(f)
+    except Exception:
+        books = []
+    def get_book_name(book_id):
+        for b in books:
+            if str(b.get('book_id')) == str(book_id):
+                return b.get('book_name', str(book_id))
+        return str(book_id)
+
+    user_day_limit = None
+    if 'day_limit' in user:
+        user_day_limit = user['day_limit']
     for i, (label, key) in enumerate(fields):
         fields_label_frame = CTkFrame(master = userlist_window2, fg_color = '#1f6aa5', corner_radius = 6, width = 100, height = 27)
         fields_label = CTkLabel(master = fields_label_frame, text = label, bg_color = 'transparent', height = 27, font = ("Arial", 15))
-        fields_entry = CTkEntry(master = userlist_window2, width = 580, height = 35)
+        if key == "borrowed_books":
+            fields_entry = CTkTextbox(master = userlist_window2, width = 580, height = 180)
+        else:
+            fields_entry = CTkEntry(master = userlist_window2, width = 580, height = 35)
         value = user.get(key, "-")
-        if key == "borrowed_books" and isinstance(value, list):
-            value = ', '.join(str(v) for v in value) if value else '---'
-        fields_entry.insert(0, str(value))
-        fields_entry.configure(state='readonly')
+        if key == "borrowed_books":
+            if value is None or value == '' or value == '-':
+                value = []
+            elif isinstance(value, str):
+                try:
+                    import ast
+                    value = ast.literal_eval(value)
+                    if not isinstance(value, list):
+                        value = [value]
+                except Exception:
+                    value = [value]
+            import datetime
+            display_lines = []
+            if isinstance(value, list) and value:
+                for v in value:
+                    if isinstance(v, dict):
+                        book_id = v.get("book_id", "-")
+                        borrow_date = v.get("borrow_date", "-")
+                        day_limit = v.get("day_limit", user_day_limit if user_day_limit else '-')
+                        days_left = '-'
+                        if borrow_date != '-' and day_limit != '-' and day_limit.lower() != 'unlimited':
+                            try:
+                                dt_borrow = datetime.datetime.strptime(borrow_date, "%Y-%m-%d %H:%M:%S")
+                                limit_days = int(day_limit.split()[0])
+                                delta = (dt_borrow + datetime.timedelta(days=limit_days)) - datetime.datetime.now()
+                                days_left = max(delta.days, 0)
+                            except Exception:
+                                days_left = '-'
+                        elif day_limit.lower() == 'unlimited':
+                            days_left = 'Unlimited'
+                        display_lines.append(f"Book Name:{get_book_name(book_id)} (ID:{book_id})\nBorrowed: {borrow_date}\nLimit: {day_limit}\nDays left: {days_left}\n-------------------")
+                    else:
+                        display_lines.append(f"{get_book_name(v)} (ID:{v})\n-\n-\n-\n-------------------")
+                value = '\n'.join(display_lines)
+            else:
+                value = '---'
+            fields_entry.insert("1.0", str(value))
+            fields_entry.configure(state='disabled')
+        else:
+            fields_entry.insert(0, str(value))
+            fields_entry.configure(state='readonly')
 
         fields_label_frame.grid(row = i, column = 0, padx = 4, pady = (4), sticky = 'nsew')
         fields_label_frame.grid_rowconfigure(0, weight = 1)
         fields_label_frame.grid_columnconfigure(0, weight = 1)
         fields_label.grid(padx = 4, pady = 4, sticky = 'nsew')
-        fields_entry.grid(row = i, column = 1)
+        if key == "borrowed_books":
+            fields_entry.grid(row = i, column = 1, sticky='w')
+        else:
+            fields_entry.grid(row = i, column = 1)
         
-    confirm_btn = CTkButton(master = userlist_window2, text = "Confirm", font = ("Arial", 15), width = 100, height = 40)
-    confirm_btn.place(x = 305, y = 350)
-    delete_user_btn = CTkButton(master = userlist_window2, text = "Remove User", font = ("Arial", 15), width = 100, height = 40)
-    delete_user_btn.place(x = 10, y = 350)
+    # confirm_btn = CTkButton(master = userlist_window2, text = "Confirm", font = ("Arial", 15), width = 100, height = 40)
+    # confirm_btn.place(x = 305, y = 350)
+    # delete_user_btn = CTkButton(master = userlist_window2, text = "Remove User", font = ("Arial", 15), width = 100, height = 40)
+    # delete_user_btn.place(x = 10, y = 350)
         
 #===========================================   
 
@@ -263,11 +436,9 @@ def User_list_window():
     search_box_frame = CTkFrame(master = userlist_window, border_color = '#1f6aa5', border_width = 2)
     search_box_frame.pack(fill = 'x', padx = 10, pady = 10)
 
-    search_box = CTkTextbox(master = search_box_frame, font = ("Arial", 15), height = 1)
+    search_box = CTkEntry(master = search_box_frame, font = ("Arial", 15), height = 1)
     search_box.pack(fill = 'x', side = 'left', expand = True, padx = 2, pady = 3)
 
-    search_button = CTkButton(master = search_box_frame, text = "Search", width = 12, font = ("Arial", 15))
-    search_button.pack(fill = 'x', expand = True, padx = (0,4), pady = 2)
     
     users_list_box_frame = CTkFrame(master = userlist_window)
     users_list_box_frame.pack(fill = 'both', padx = 10, pady = 10, expand = True)
@@ -284,22 +455,21 @@ def User_list_window():
     current_user_list = users.copy()
 
     def fill_listbox(user_list):
-        users_list_box.delete(0, 'end')
+        users_list_box.delete(0, users_list_box.size())
         for user in user_list:
             preview = f"{user.get('first_name','')} {user.get('last_name','')} | ID: {user.get('user_id','')}"
-            users_list_box.insert('end', preview)
+            users_list_box.insert(users_list_box.size(), preview)
 
     fill_listbox(current_user_list)
 
 
     def search_users(event=None):
-        query = search_box.get("1.0", "end").strip().lower()
+        query = search_box.get().strip().lower()
         if not query:
             filtered = users
         else:
             filtered = []
             for user in users:
-                # Concatenate all user values into a single string for multi-word search
                 user_text = ' '.join(str(value) for value in user.values()).lower()
                 if query in user_text:
                     filtered.append(user)
@@ -307,7 +477,6 @@ def User_list_window():
         current_user_list.extend(filtered)
         fill_listbox(current_user_list)
 
-    search_button.configure(command=search_users)
     search_box.bind("<KeyRelease>", search_users)
 
 
@@ -414,7 +583,7 @@ def Day_limitation_window():
     day_limit_window.grab_set()
     day_limit_window.resizable(False,False)
 
-    fields = ["1 Week", "2 Weeks", "3 Weeks", "1 Month", "2 Months", "3 Months", "Unlimited"]
+    fields = ["7 Days", "14 Days", "21 Days", "30 Days", "60 Days", "90 Days", "Unlimited"]
     from customtkinter import StringVar, CTkRadioButton
     selected_limit = StringVar(value=fields[0])
 
@@ -447,11 +616,8 @@ def Day_limitation_window():
 search_box_label = CTkFrame(master = main_window, border_color = '#1f6aa5', border_width = 2)
 search_box_label.pack(fill = 'x', padx = 10, pady = 10)
 
-search_box = CTkTextbox(master = search_box_label, font = ("Arial", 15), height = 1)
+search_box = CTkEntry(master = search_box_label, font = ("Arial", 15), height = 1)
 search_box.pack(fill = 'x', side = 'left', expand = True, padx = 2, pady = 3)
-
-search_button = CTkButton(master = search_box_label, text = "Search", width = 12, font = ("Arial", 15))
-search_button.pack(fill = 'x', expand = True, padx = (0,4), pady = 2)
 
 #===========================================
 
@@ -470,18 +636,14 @@ user_name_btn.pack(fill = 'x', padx = 3, pady = (0,3))
 borrow_btn = CTkButton(master = borrow_frame, text = "Borrow Book", height = 40, font = ("Arial", 15), command = Borrow_book_window)
 borrow_btn.pack(fill = 'x', padx = 3, pady = (0,3))
 
+day_limit_btn = CTkButton(master = borrow_frame, text = "Day Limitation", height = 40, font = ("Arial",15), command = Day_limitation_window)
+day_limit_btn.pack(fill = 'x',padx = 3, pady = (0,3))
+
 return_btn = CTkButton(master = borrow_frame, text = "Return Book", height = 40, font = ("Arial", 15), command = Return_book_window)
 return_btn.pack(fill = 'x', padx = 3, pady = (0,3))
 
 users_list_btn = CTkButton(master = borrow_frame, text = "Users List", height = 40, font = ("Arial", 15), command = User_list_window)
 users_list_btn.pack(fill = 'x', padx = 3, pady = (0,3))
-
-borrow_status_frame = CTkFrame(master = borrow_frame, corner_radius = 6, fg_color='#1f6aa5')
-borrow_status_frame.pack(fill = 'x', padx = 3, pady = (0,3))
-
-borrow_status = CTkLabel(master = borrow_status_frame, text = "Status:\nBorrowed", height = 40, font = ("Arial",15),
-                         bg_color = "transparent")
-borrow_status.pack()
 
 stock_status_frame = CTkFrame(master = borrow_frame, corner_radius = 6, fg_color='#1f6aa5')
 stock_status_frame.pack(fill = 'x', padx = 3, pady = (0,3))
@@ -489,9 +651,6 @@ stock_status_frame.pack(fill = 'x', padx = 3, pady = (0,3))
 stock_status = CTkLabel(master = stock_status_frame, text = "Stock: 4", height = 40, font = ("Arial",15),
                          bg_color = "transparent")
 stock_status.pack()
-
-day_limit_btn = CTkButton(master = borrow_frame, text = "Day Limitation", height = 40, font = ("Arial",15), command = Day_limitation_window)
-day_limit_btn.pack(fill = 'x',padx = 3, pady = (0,3))
 
 add_btn = CTkButton(master = borrow_frame, text = "Add Book", height = 40, font = ("Arial",15), command = Add_book_window)
 add_btn.pack(fill = 'x',padx = 3, pady = (0,3))
@@ -517,12 +676,12 @@ except:
 def fill_book_list_box(book_list=None):
     if book_list is None:
         book_list = all_books
-    book_list_box.delete(0, 'end')
+    book_list_box.delete(0, book_list_box.size())
     for book in book_list:
         name = book.get('book_name', '-')
         code = book.get('book_id', '-')
         stock = book.get('stock', '-')
-        book_list_box.insert('end', f"{name} | ID: {code} | Stock: {stock}")
+        book_list_box.insert(book_list_box.size(), f"{name} | ID: {code} | Stock: {stock}")
 
 fill_book_list_box()
 
@@ -531,7 +690,7 @@ filtered_books = []
 
 def search_books(event=None):
     global filtered_books
-    query = search_box.get("1.0", "end").strip().lower()
+    query = search_box.get().strip().lower()
     try:
         with open("./Books.json", "r", encoding="utf-8") as f:
             books = json.load(f)
@@ -542,15 +701,15 @@ def search_books(event=None):
     else:
         filtered_books = []
         for book in books:
-            book_text = ' '.join(str(value) for value in book.values()).lower()
+            book_text = f"{book.get('book_name','')} {book.get('author','')} {book.get('book_id','')} {book.get('publisher','')} {book.get('category','')}".lower()
             if query in book_text:
                 filtered_books.append(book)
-    book_list_box.delete(0, 'end')
+    book_list_box.delete(0, book_list_box.size())
     for book in filtered_books:
         name = book.get('book_name', '-')
         code = book.get('book_id', '-')
         stock = book.get('stock', '-')
-        book_list_box.insert('end', f"{name} | ID: {code} | Stock: {stock}")
+        book_list_box.insert(book_list_box.size(), f"{name} | ID: {code} | Stock: {stock}")
 
 
 def on_book_double_click(event=None):
@@ -575,13 +734,16 @@ def on_book_double_click(event=None):
 
 
 def on_book_select(event=None):
+    global selected_book_id
     selection = book_list_box.curselection()
     if selection is None:
         stock_status.configure(text="Stock: None Selected")
+        selected_book_id = None
         return
     if isinstance(selection, (list, tuple)):
         if not selection:
             stock_status.configure(text="Stock: None Selected")
+            selected_book_id = None
             return
         index = selection[0]
     else:
@@ -590,13 +752,41 @@ def on_book_select(event=None):
         index = int(index)
     except Exception:
         stock_status.configure(text="Stock: None Selected")
+        selected_book_id = None
         return
     if 0 <= index < len(filtered_books):
         book = filtered_books[index]
-        stock = book.get('stock', '-')
-        stock_status.configure(text=f"Stock: {stock}")
+        selected_book_id = book.get('book_id', None)
+        try:
+            with open("./Users.json", "r", encoding="utf-8") as f:
+                users = json.load(f)
+        except Exception:
+            users = []
+        total_borrowed = 0
+        for user in users:
+            borrowed = user.get('borrowed_books', [])
+            if isinstance(borrowed, str):
+                try:
+                    import ast
+                    borrowed = ast.literal_eval(borrowed)
+                    if not isinstance(borrowed, list):
+                        borrowed = [borrowed]
+                except Exception:
+                    borrowed = [borrowed]
+            if isinstance(borrowed, list):
+                total_borrowed += sum(1 for b in borrowed if str(b) == str(selected_book_id))
+        try:
+            initial_stock = int(book.get('initial_stock', book.get('stock', 0)))
+        except Exception:
+            initial_stock = 0
+        available_stock = initial_stock - total_borrowed
+        if available_stock < 0:
+            available_stock = 0
+        stock_status.configure(text=f"Stock: {available_stock}")
+        
     else:
         stock_status.configure(text="Stock: None Selected")
+        selected_book_id = None
 
 book_list_box.bind('<Double-Button-1>', on_book_double_click)
 book_list_box.bind('<<ListboxSelect>>', on_book_select)
@@ -628,8 +818,6 @@ def book_information_window(book):
         fields_label = CTkLabel(master = fields_label_frame, text = label, bg_color = 'transparent', height = 27, font = ("Arial", 15))
         fields_entry = CTkEntry(master = book_info_window, width = 580, height = 35)
         value = book.get(key, "-")
-        if key == "borrowed_books" and isinstance(value, list):
-            value = ', '.join(str(v) for v in value) if value else '---'
         fields_entry.insert(0, str(value))
         fields_entry.configure(state='readonly')
 
@@ -644,7 +832,6 @@ def book_information_window(book):
     delete_user_btn = CTkButton(master = book_info_window, text = "Remove User", font = ("Arial", 15), width = 100, height = 40)
     delete_user_btn.place(x = 10, y = 350)
 
-search_button.configure(command=search_books)
 search_box.bind("<KeyRelease>", search_books)
 
 main_window.mainloop()
