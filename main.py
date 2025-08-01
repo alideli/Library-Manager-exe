@@ -646,7 +646,7 @@ def User_list_window():
 def Add_book_window():
     add_book_window = CTkToplevel()
     center_window(add_book_window, 700, 303)
-    add_book_window.title("Users Information")
+    add_book_window.title("Add Book")
     add_book_window.lift()
     add_book_window.grab_set()
     add_book_window.resizable(False,False)
@@ -690,7 +690,7 @@ def Add_book_window():
 def Remove_book_window():
     remove_book_window = CTkToplevel()
     center_window(remove_book_window, 472, 90)
-    remove_book_window.title("Users Information")
+    remove_book_window.title("Remove Book")
     remove_book_window.lift()
     remove_book_window.grab_set()
     remove_book_window.resizable(False,False)
@@ -959,7 +959,7 @@ def operator_list():
 def operator_info_window(operator):
     op_info_window = CTkToplevel()
     center_window(op_info_window, 500, 265)
-    op_info_window.title("Operator Information")
+    op_info_window.title("Operators Information")
     op_info_window.lift()
     op_info_window.grab_set()
     op_info_window.resizable(False,False)
@@ -1013,7 +1013,6 @@ def operator_info_window(operator):
         if operator_id is None:
             messagebox.showwarning("Error", "Operator ID not found.")
             return
-        # Update Operators.json
         op_file = os.path.join(os.path.dirname(__file__), 'Operators.json')
         if not os.path.exists(op_file):
             messagebox.showwarning("Error", "Operators file not found.")
