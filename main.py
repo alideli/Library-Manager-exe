@@ -51,10 +51,15 @@ def new_user_btn_window():
         fields_label.grid(padx = 4, pady = 4, sticky = 'nsew')
         fields_entry.grid(row = i, column = 1)
 
+
     def confirm():
         values = []
         for entry in entries:
             values.append(entry.get())
+        for i, field in enumerate(fields):
+            if field != "Date Registered" and (not values[i] or str(values[i]).strip() == ""):
+                messagebox.showerror("Error", f"Field '{field}' is required.")
+                return
         user = add_new_user(*values)
         messagebox.showinfo("Success", f"User added successfully\nUser ID: {user['user_id']}")
         new_user_window.destroy()
@@ -122,6 +127,7 @@ def find_user_btn_window():
 
 def Borrow_book_window():
     global selected_user_id, selected_borrowed_books, selected_book_id
+
     if day_limit_btn.cget("text") == "Day Limitation":
         messagebox.showwarning("Error", "Please set the day limitation before borrowing a book.")
         return
@@ -132,15 +138,51 @@ def Borrow_book_window():
     book_name = "-"
     first_name = "-"
     last_name = "-"
+    book_stock = None
     try:
         with open("./Books.json", "r", encoding="utf-8") as f:
             books = json.load(f)
         for book in books:
             if str(book.get('book_id')) == str(selected_book_id):
                 book_name = book.get('book_name', '-')
+                try:
+                    book_stock = int(book.get('stock', 0))
+                except Exception:
+                    book_stock = 0
                 break
     except Exception:
         pass
+
+    if book_stock is not None and book_stock <= 0:
+        messagebox.showerror("Error", "Stock is 0 and can't borrow")
+        return
+
+    # Prevent borrowing the same book twice for the same user
+    already_borrowed = False
+    if selected_borrowed_books:
+        for b in selected_borrowed_books:
+            if isinstance(b, dict):
+                if str(b.get("book_id")) == str(selected_book_id):
+                    already_borrowed = True
+                    break
+            else:
+                if str(b) == str(selected_book_id):
+                    already_borrowed = True
+                    break
+    if already_borrowed:
+        if first_name == "-" or last_name == "-":
+            try:
+                with open("./Users.json", "r", encoding="utf-8") as f:
+                    users = json.load(f)
+                for user in users:
+                    if str(user.get('user_id')) == str(selected_user_id):
+                        first_name = user.get('first_name', '-')
+                        last_name = user.get('last_name', '-')
+                        break
+            except Exception:
+                pass
+        messagebox.showerror("Error", f"This book is already borrowed by user: {first_name} {last_name}")
+        return
 
     try:
         with open("./Users.json", "r", encoding="utf-8") as f:
@@ -627,6 +669,10 @@ def Add_book_window():
     
     def confirm():
         values = [entry.get() for entry in entries]
+        for i, field in enumerate(fields):
+            if not values[i] or str(values[i]).strip() == "":
+                messagebox.showerror("Error", f"Field '{field}' is required.")
+                return
         stock_index = 4  # index of Stock in fields
         if len(values) > stock_index and (values[stock_index] is None or str(values[stock_index]).strip() == ""):
             values[stock_index] = "1"
