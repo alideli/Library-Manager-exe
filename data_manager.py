@@ -1,3 +1,54 @@
+import os
+
+# Operator management
+OPERATORS_FILE = "./Operators.json"
+
+def get_next_operator_id():
+    if not os.path.exists(OPERATORS_FILE):
+        return 11
+    with open(OPERATORS_FILE, "r", encoding="utf-8") as f:
+        try:
+            operators = json.load(f)
+        except Exception:
+            operators = []
+    used_ids = {int(op.get("Operator ID", 0)) for op in operators if str(op.get("Operator ID", "")).isdigit()}
+    for op_id in range(11, 101):
+        if op_id not in used_ids:
+            return op_id
+    return None
+
+def add_new_operator(first_name, last_name, operator_id, username, password):
+    if not os.path.exists(OPERATORS_FILE):
+        operators = []
+    else:
+        with open(OPERATORS_FILE, "r", encoding="utf-8") as f:
+            try:
+                operators = json.load(f)
+            except Exception:
+                operators = []
+    for op in operators:
+        if op.get("Username", "") == username:
+            raise ValueError("Username already exists.")
+    operator = {
+        "First Name": first_name,
+        "Last Name": last_name,
+        "Operator ID": operator_id,
+        "Username": username,
+        "Password": password
+    }
+    operators.append(operator)
+    with open(OPERATORS_FILE, "w", encoding="utf-8") as f:
+        json.dump(operators, f, ensure_ascii=False, indent=2)
+    return operator
+
+def get_all_operators():
+    if not os.path.exists(OPERATORS_FILE):
+        return []
+    with open(OPERATORS_FILE, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except Exception:
+            return []
 # ========== Imports ==========
 import os
 import json
@@ -135,6 +186,9 @@ def get_book_by_id(book_id):
     return None
 
 
-
+# ========== Operator Management ==========
+Operator = []
+operator_id_list = list(range(11,100))
+assigned_operator_ids = set()
 
 

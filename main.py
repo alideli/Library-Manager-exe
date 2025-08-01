@@ -4,19 +4,23 @@ from CTkListbox import CTkListbox
 from customtkinter import *
 from tkinter import messagebox
 import json
+
+import ast
+import datetime
 from data_manager import add_new_user, update_borrowed_books, add_new_book
 from utils import center_window, get_book_name
 
 selected_user_id = None
 selected_borrowed_books = []
 selected_book_id = None
+is_admin_logged_in = False
         
 set_appearance_mode("System")
 set_default_color_theme("blue")
 
 main_window = CTk()
 main_window.title("Library Management")
-center_window(main_window, 900, 600)
+center_window(main_window, 900, 638)
 main_window.iconbitmap("./icon/Library_icon.ico")
 
 
@@ -157,7 +161,6 @@ def Borrow_book_window():
         messagebox.showerror("Error", "Stock is 0 and can't borrow")
         return
 
-    # Prevent borrowing the same book twice for the same user
     already_borrowed = False
     if selected_borrowed_books:
         for b in selected_borrowed_books:
@@ -427,13 +430,11 @@ def User_list_window2(user, refresh_callback=None):
                 value = []
             elif isinstance(value, str):
                 try:
-                    import ast
                     value = ast.literal_eval(value)
                     if not isinstance(value, list):
                         value = [value]
                 except Exception:
                     value = [value]
-            import datetime
             display_lines = []
             if isinstance(value, list) and value:
                 for v in value:
@@ -767,7 +768,318 @@ def Day_limitation_window():
     confirm_btn = CTkButton(master=day_limit_window, text="Confirm", font=("Arial", 15), width=120, height=40, command=confirm)
     confirm_btn.grid(row=3, column=0, columnspan=3, pady=(20,10))
     
+#======================================
+
+def login():
+    global day_limit_btn, is_admin_logged_in, login_btn, add_op
+    login_window = CTkToplevel()
+    center_window(login_window, 472, 138)
+    login_window.title("Admin Login")
+    login_window.lift()
+    login_window.grab_set()
+    login_window.resizable(False,False)
+
+    fields = ["Username","Password"]
+    entries = []
+    for i,field in enumerate(fields):
+        fields_label_frame = CTkFrame(master = login_window, fg_color = '#1f6aa5', corner_radius = 6,
+                                      width = 100, height = 27)
+        fields_label = CTkLabel(master = fields_label_frame, text = field, bg_color = 'transparent', height = 27,
+                                font = ("Arial", 15))
+        fields_entry = CTkEntry(master = login_window, width = 385, height = 35, show='*' if field=="Password" else None)
+        entries.append(fields_entry)
+        fields_label_frame.grid(row = i, column = 0, padx = 4, pady = (4), sticky = 'nsew')
+        fields_label_frame.grid_rowconfigure(0, weight = 1)
+        fields_label_frame.grid_columnconfigure(0, weight = 1)
+        fields_label.grid(padx = 4, pady = 4, sticky = 'nsew')
+        fields_entry.grid(row = i, column = 1)
+
+    def confirm():
+        global is_admin_logged_in
+        username = entries[0].get().strip()
+        password = entries[1].get().strip()
+        # Admin credentials (hardcoded for now)
+        admin_username = "admin"
+        admin_password = "admin123"
+        if username == admin_username and password == admin_password:
+            is_admin_logged_in = True
+            login_btn.configure(text="Admin")
+            add_op.configure(state="normal")
+            op_list_btn.configure(state="normal")
+            messagebox.showinfo("Success", "Admin logged in successfully.")
+            login_window.destroy()
+            return
+        import os, json
+        op_file = os.path.join(os.path.dirname(__file__), 'Operators.json')
+        try:
+            with open(op_file, "r", encoding="utf-8") as f:
+                ops = json.load(f)
+        except Exception:
+            ops = []
+        found_op = None
+        for op in ops:
+            if op.get("Username", "") == username and op.get("Password", "") == password:
+                found_op = op
+                break
+        if found_op:
+            is_admin_logged_in = False  # Not admin, but operator
+            full_name = f"{found_op.get('First Name','')} {found_op.get('Last Name','')}"
+            login_btn.configure(text=full_name)
+            add_op.configure(state="disabled")
+            op_list_btn.configure(state="disabled")
+            messagebox.showinfo("Success", f"Operator logged in: {full_name}")
+            login_window.destroy()
+        else:
+            messagebox.showerror("Error", "Invalid credentials.")
+
+    confirm_btn = CTkButton(master = login_window, text = "Confirm", font = ("Arial", 15), width = 120, height=40, command=confirm)
+    confirm_btn.grid(row=3, column=0, columnspan=3, pady=(3))
     
+#=====================================
+
+def add_operator():
+    global day_limit_btn, is_admin_logged_in
+    if not is_admin_logged_in:
+        messagebox.showwarning("Access Denied", "Only admin can add a new operator. Please login as admin.")
+        return
+    from data_manager import get_next_operator_id, add_new_operator
+    add_op_window = CTkToplevel()
+    center_window(add_op_window, 550, 223)
+    add_op_window.title("Add Operator")
+    add_op_window.lift()
+    add_op_window.grab_set()
+    add_op_window.resizable(False,False)
+
+    fields = ["First Name","Last Name","Username","Password"]
+    entries = []
+    for i, field in enumerate(fields):
+        fields_label_frame = CTkFrame(master=add_op_window, fg_color='#1f6aa5', corner_radius=6, width=100, height=27)
+        fields_label = CTkLabel(master=fields_label_frame, text=field, bg_color='transparent', height=27, font=("Arial", 15))
+        fields_entry = CTkEntry(master=add_op_window, width=460, height=35)
+        entries.append(fields_entry)
+        fields_label_frame.grid(row=i, column=0, padx=4, pady=(4), sticky='nsew')
+        fields_label_frame.grid_rowconfigure(0, weight=1)
+        fields_label_frame.grid_columnconfigure(0, weight=1)
+        fields_label.grid(padx=4, pady=4, sticky='nsew')
+        fields_entry.grid(row=i, column=1)
+
+    def confirm():
+        values = [entry.get() for entry in entries]
+        for i, field in enumerate(fields):
+            if not values[i] or str(values[i]).strip() == "":
+                messagebox.showerror("Error", f"Field '{field}' is required.")
+                return
+        try:
+            operator_id = get_next_operator_id()
+            operator = add_new_operator(values[0], values[1], operator_id, values[2], values[3])
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+            return
+        messagebox.showinfo("Success", f"Operator added successfully\nOperator ID: {operator['Operator ID']}")
+        add_op_window.destroy()
+
+    confirm_btn = CTkButton(master=add_op_window, text="Confirm", font=("Arial", 15), width=120, height=40, command=confirm)
+    confirm_btn.grid(row=len(fields), column=0, columnspan=3, pady=(3))
+    
+#====================================
+
+def operator_list():
+    from data_manager import get_all_operators
+    op_list_window = CTkToplevel()
+    center_window(op_list_window, 712, 533)
+    op_list_window.title("Operators List")
+    op_list_window.lift()
+    op_list_window.grab_set()
+    op_list_window.resizable(False,False)
+
+    search_box_label = CTkFrame(master=op_list_window, border_color='#1f6aa5', border_width=2)
+    search_box_label.pack(fill='x', padx=10, pady=10)
+
+    search_box = CTkEntry(master=search_box_label, font=("Arial", 15), height=1)
+    search_box.pack(fill='x', side='left', expand=True, padx=2, pady=3)
+
+    op_list_box_frame = CTkFrame(master=op_list_window)
+    op_list_box_frame.pack(fill='both', padx=10, pady=10, expand=True)
+
+    op_list_box = CTkListbox(master=op_list_box_frame, height=550, border_color='#1f6aa5', border_width=2)
+    op_list_box.pack(fill='both', expand=True)
+
+    try:
+        operators = get_all_operators()
+    except Exception:
+        operators = []
+    current_op_list = operators.copy()
+
+    def fill_listbox(op_list):
+        op_list_box.delete(0, op_list_box.size())
+        for op in op_list:
+            preview = f"{op.get('First Name','')} {op.get('Last Name','')} | ID: {op.get('Operator ID','')} | Username: {op.get('Username','')}"
+            op_list_box.insert(op_list_box.size(), preview)
+
+    fill_listbox(current_op_list)
+
+    def search_ops(event=None):
+        query = search_box.get().strip().lower()
+        if not query:
+            filtered = operators
+        else:
+            filtered = []
+            for op in operators:
+                op_text = ' '.join(str(value) for value in op.values()).lower()
+                if query in op_text:
+                    filtered.append(op)
+        current_op_list.clear()
+        current_op_list.extend(filtered)
+        fill_listbox(current_op_list)
+
+    search_box.bind("<KeyRelease>", search_ops)
+
+    def refresh_op_list():
+        nonlocal operators, current_op_list
+        try:
+            operators = get_all_operators()
+        except Exception:
+            operators = []
+        current_op_list.clear()
+        current_op_list.extend(operators)
+        fill_listbox(current_op_list)
+
+    def on_op_double_click(event=None):
+        selection = op_list_box.curselection()
+        if selection is None or selection == '':
+            return
+        index = selection
+        if 0 <= index < len(current_op_list):
+            op = current_op_list[index]
+            operator_info_window(op)
+
+    op_list_box.bind('<Double-Button-1>', on_op_double_click)
+
+#===================================
+def operator_info_window(operator):
+    op_info_window = CTkToplevel()
+    center_window(op_info_window, 500, 265)
+    op_info_window.title("Operator Information")
+    op_info_window.lift()
+    op_info_window.grab_set()
+    op_info_window.resizable(False,False)
+
+    import os
+    import json
+    fields = [
+        ("First Name", "First Name"),
+        ("Last Name", "Last Name"),
+        ("Operator ID", "Operator ID"),
+        ("Username", "Username"),
+        ("Password", "Password")
+    ]
+    entries = []
+    for i, (label, key) in enumerate(fields):
+        fields_label_frame = CTkFrame(master=op_info_window, fg_color='#1f6aa5', corner_radius=6, width=100, height=27)
+        fields_label = CTkLabel(master=fields_label_frame, text=label, bg_color='transparent', height=27, font=("Arial", 15))
+        fields_entry = CTkEntry(master=op_info_window, width=405, height=35)
+        value = operator.get(key, "-")
+        fields_entry.insert(0, str(value))
+        if key == "Operator ID":
+            fields_entry.configure(state='readonly')
+        else:
+            fields_entry.configure(state='readonly')
+        fields_label_frame.grid(row=i, column=0, padx=4, pady=4, sticky='nsew')
+        fields_label_frame.grid_rowconfigure(0, weight=1)
+        fields_label_frame.grid_columnconfigure(0, weight=1)
+        fields_label.grid(padx=4, pady=4, sticky='nsew')
+        fields_entry.grid(row=i, column=1)
+        entries.append(fields_entry)
+
+    editable_keys = ["First Name", "Last Name", "Username", "Password"]
+    entry_widgets = {key: entries[i] for i, (_, key) in enumerate(fields)}
+
+    def set_editable(state=True):
+        for key in editable_keys:
+            widget = entry_widgets.get(key)
+            if widget:
+                if state:
+                    widget.configure(state="normal")
+                else:
+                    widget.configure(state="readonly")
+
+    def confirm_edit():
+        new_data = {}
+        for key in editable_keys:
+            widget = entry_widgets.get(key)
+            if widget:
+                new_data[key] = widget.get().strip()
+        operator_id = operator.get('Operator ID', None)
+        if operator_id is None:
+            messagebox.showwarning("Error", "Operator ID not found.")
+            return
+        # Update Operators.json
+        op_file = os.path.join(os.path.dirname(__file__), 'Operators.json')
+        if not os.path.exists(op_file):
+            messagebox.showwarning("Error", "Operators file not found.")
+            return
+        try:
+            with open(op_file, "r", encoding="utf-8") as f:
+                ops = json.load(f)
+        except Exception:
+            ops = []
+        updated = False
+        for op in ops:
+            if str(op.get('Operator ID')) == str(operator_id):
+                for k, v in new_data.items():
+                    op[k] = v
+                updated = True
+                break
+        if updated:
+            try:
+                with open(op_file, "w", encoding="utf-8") as f:
+                    json.dump(ops, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                messagebox.showwarning("Error", f"Could not update operator.\n{e}")
+                return
+            messagebox.showinfo("Success", "Operator information updated.")
+            set_editable(False)
+        else:
+            messagebox.showwarning("Error", "Operator not found in file.")
+
+    def remove_operator_action():
+        answer = messagebox.askyesno("Confirm Remove", f"Are you sure you want to remove this operator?\n\nName: {operator.get('First Name','-')} {operator.get('Last Name','-')}\nID: {operator.get('Operator ID','-')}")
+        if answer:
+            op_file = os.path.join(os.path.dirname(__file__), 'Operators.json')
+            if not os.path.exists(op_file):
+                messagebox.showwarning("Error", "Operators file not found.")
+                return
+            try:
+                with open(op_file, "r", encoding="utf-8") as f:
+                    ops = json.load(f)
+            except Exception:
+                ops = []
+            operator_id = operator.get('Operator ID', None)
+            if operator_id is not None:
+                ops = [op for op in ops if str(op.get('Operator ID')) != str(operator_id)]
+                try:
+                    with open(op_file, "w", encoding="utf-8") as f:
+                        json.dump(ops, f, ensure_ascii=False, indent=2)
+                except Exception as e:
+                    messagebox.showwarning("Error", f"Could not remove operator from file.\n{e}")
+                    return
+                messagebox.showinfo("Success", "Operator removed successfully.")
+                op_info_window.destroy()
+            else:
+                messagebox.showwarning("Error", "Operator ID not found.")
+
+    confirm_btn = CTkButton(master=op_info_window, text="Confirm", font=("Arial", 15), width=100, height=40, command=confirm_edit)
+    confirm_btn.place(x=200, y=220)
+
+    remove_op_btn = CTkButton(master=op_info_window, text="Remove Operator", font=("Arial", 15), width=120, height=40, command=remove_operator_action)
+    remove_op_btn.place(x=3, y=220)
+
+    def edit_operator_action():
+        set_editable(True)
+
+    edit_op_btn = CTkButton(master=op_info_window, text="Edit Operator", font=("Arial", 15), width=120, height=40, command=edit_operator_action)
+    edit_op_btn.place(x=375, y=220)
+
 #===========================================
 
 search_box_label = CTkFrame(master = main_window, border_color = '#1f6aa5', border_width = 2)
@@ -780,6 +1092,16 @@ search_box.pack(fill = 'x', side = 'left', expand = True, padx = 2, pady = 3)
 
 borrow_frame = CTkFrame(master = main_window, border_color = '#1f6aa5', border_width = 2)
 borrow_frame.pack(fill = 'y', padx = 10, pady = 10, side = 'right')
+
+
+login_btn = CTkButton(master = borrow_frame, text = "Login", height = 40, font = ("Arial", 15), command = login)
+login_btn.pack(fill = 'x', padx = 3, pady = (3,0))
+
+add_op= CTkButton(master = borrow_frame, text = "Add Operator", height = 40, font = ("Arial", 15), command = add_operator, state="disabled")
+add_op.pack(fill = 'x', padx = 3, pady = (3,0))
+
+op_list_btn = CTkButton(master = borrow_frame, text = "Operators List", height = 40, font = ("Arial", 15), command = operator_list, state="disabled")
+op_list_btn.pack(fill = 'x', padx = 3, pady = (3,0))
 
 new_user_btn = CTkButton(master = borrow_frame, text = "New User", height = 40, font = ("Arial",15), command = new_user_btn_window)
 new_user_btn.pack(fill = 'x', padx = 3, pady = 3)
@@ -903,12 +1225,12 @@ def on_book_select(event=None):
     global selected_book_id
     selection = book_list_box.curselection()
     if selection is None:
-        stock_status.configure(text="Stock: None Selected")
+        stock_status.configure(text="Stock: None")
         selected_book_id = None
         return
     if isinstance(selection, (list, tuple)):
         if not selection:
-            stock_status.configure(text="Stock: None Selected")
+            stock_status.configure(text="Stock: None")
             selected_book_id = None
             return
         index = selection[0]
@@ -917,7 +1239,7 @@ def on_book_select(event=None):
     try:
         index = int(index)
     except Exception:
-        stock_status.configure(text="Stock: None Selected")
+        stock_status.configure(text="Stock: None")
         selected_book_id = None
         return
     if 0 <= index < len(filtered_books):
@@ -950,13 +1272,13 @@ def on_book_select(event=None):
             available_stock = 0
         stock_status.configure(text=f"Stock: {available_stock}")
     else:
-        stock_status.configure(text="Stock: None Selected")
+        stock_status.configure(text="Stock: None")
         selected_book_id = None
 
 book_list_box.bind('<Double-Button-1>', on_book_double_click)
 book_list_box.bind('<<ListboxSelect>>', on_book_select)
 
-stock_status.configure(text="Stock: None Selected")
+stock_status.configure(text="Stock: None")
 
 search_books()
 
