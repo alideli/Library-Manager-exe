@@ -20,8 +20,9 @@ set_default_color_theme("blue")
 
 main_window = CTk()
 main_window.title("Library Management")
-center_window(main_window, 900, 638)
+center_window(main_window, 900, 634)
 main_window.iconbitmap("./icon/Library_icon.ico")
+main_window.resizable = (False,False)
 
 
 #=====================================
@@ -1085,7 +1086,7 @@ search_box_label = CTkFrame(master = main_window, border_color = '#1f6aa5', bord
 search_box_label.pack(fill = 'x', padx = 10, pady = 10)
 
 search_box = CTkEntry(master = search_box_label, font = ("Arial", 15), height = 1)
-search_box.pack(fill = 'x', side = 'left', expand = True, padx = 2, pady = 3)
+search_box.pack(fill = 'both', expand = True, padx = 2, pady = 3)
 
 #===========================================
 
